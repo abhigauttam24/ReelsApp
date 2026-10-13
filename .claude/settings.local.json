@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.expo.dev)",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\Full Stack\\\\OneDrive\\\\Desktop\\\\Abhishek_Work\\\\ReelsApp\"; Select-String -Path package-lock.json -Pattern '\"react-native-reanimated\"' | Select-Object -First 20 | ForEach-Object { $_.LineNumber.ToString\\(\\) + ': ' + $_.Line.Trim\\(\\) })",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\Full Stack\\\\OneDrive\\\\Desktop\\\\Abhishek_Work\\\\ReelsApp\"; $content = Get-Content package-lock.json -Raw; $json = ConvertFrom-Json $content; $reanimated = $json.packages.'node_modules/react-native-reanimated'; Write-Host \"Top-level reanimated version: $\\($reanimated.version\\)\")",
+      "PowerShell(Set-Location \"c:\\\\Users\\\\Full Stack\\\\OneDrive\\\\Desktop\\\\Abhishek_Work\\\\ReelsApp\"; $lines = Get-Content package-lock.json; $idx = \\($lines | Select-String '\"node_modules/react-native-reanimated\"'\\).LineNumber - 1; $lines[\\($idx\\)..\\($idx+5\\)])",
+      "PowerShell(eas --version)",
+      "PowerShell(eas whoami)"
+    ]
+  }
+}
