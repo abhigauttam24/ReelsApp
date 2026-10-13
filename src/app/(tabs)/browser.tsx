@@ -50,8 +50,11 @@ function isDownloadableUrl(url: string) {
   }
 }
 
+// URLs the API reported as type "video" (its URLs don't always contain ".mp4")
+const apiVideoUrls = new Set<string>();
+
 function getFileInfo(url: string): { extension: string; isVideo: boolean } {
-  if (url.includes('.mp4') || url.includes('video') || url.includes('mp4')) {
+  if (apiVideoUrls.has(url) || url.includes('.mp4') || url.includes('video') || url.includes('mp4')) {
     return { extension: '.mp4', isVideo: true };
   }
   return { extension: '.jpg', isVideo: false };
@@ -82,7 +85,9 @@ async function fetchAllMediaUrls(url: string): Promise<string[]> {
 
   if (Array.isArray(data?.media)) {
     data.media.forEach((m: any) => {
-      if (m?.url) allUrls.push(m.url);
+      if (!m?.url) return;
+      if (m.type === 'video') apiVideoUrls.add(m.url);
+      allUrls.push(m.url);
     });
   } else if (Array.isArray(data)) {
     data.forEach((item: any) => {
@@ -100,6 +105,10 @@ async function fetchAllMediaUrls(url: string): Promise<string[]> {
     if (data?.video_url) allUrls.push(data.video_url);
     else if (data?.data?.video_url) allUrls.push(data.data.video_url);
     else if (Array.isArray(data) && data[0]?.video_url) allUrls.push(data[0].video_url);
+  }
+
+  if (allUrls.length === 0 && (data?.error || data?.message)) {
+    throw new Error(data.error || data.message);
   }
 
   return allUrls;

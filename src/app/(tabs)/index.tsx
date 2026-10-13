@@ -22,8 +22,11 @@ const { width } = Dimensions.get('window');
 
 type DownloadState = 'idle' | 'fetching' | 'ready' | 'downloading' | 'done';
 
+// URLs the API reported as type "video" (its URLs don't always contain ".mp4")
+const apiVideoUrls = new Set<string>();
+
 function getFileInfo(url: string): { extension: string; isVideo: boolean } {
-  if (url.includes('.mp4') || url.includes('video') || url.includes('mp4')) {
+  if (apiVideoUrls.has(url) || url.includes('.mp4') || url.includes('video') || url.includes('mp4')) {
     return { extension: '.mp4', isVideo: true };
   }
   return { extension: '.jpg', isVideo: false };
@@ -44,7 +47,9 @@ async function fetchAllMediaUrls(url: string): Promise<string[]> {
 
   if (Array.isArray(data?.media)) {
     data.media.forEach((m: any) => {
-      if (m?.url) allUrls.push(m.url);
+      if (!m?.url) return;
+      if (m.type === 'video') apiVideoUrls.add(m.url);
+      allUrls.push(m.url);
     });
   } else if (Array.isArray(data)) {
     data.forEach((item: any) => {
@@ -66,6 +71,10 @@ async function fetchAllMediaUrls(url: string): Promise<string[]> {
       allUrls.push(data.items[0].video_versions[0].url);
     else if (data?.graphql?.shortcode_media?.video_url)
       allUrls.push(data.graphql.shortcode_media.video_url);
+  }
+
+  if (allUrls.length === 0 && (data?.error || data?.message)) {
+    throw new Error(data.error || data.message);
   }
 
   return allUrls;
@@ -113,7 +122,7 @@ export default function DownloadScreen() {
         setDownloadState('idle');
       }
     } catch (e: any) {
-      Alert.alert('Error', 'Could not fetch media. Check the link and try again.');
+      Alert.alert('Error', e?.message || 'Could not fetch media. Check the link and try again.');
       setDownloadState('idle');
     }
   };
