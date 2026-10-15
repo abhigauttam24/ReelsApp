@@ -19,7 +19,8 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive_icon.png",
-        "backgroundColor": "#111318"
+        "backgroundImage": "./assets/adaptive_icon_bg.png",
+        "backgroundColor": "#E9145C"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.abhigauttam18.socialvideodownloader",

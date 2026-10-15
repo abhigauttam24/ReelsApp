@@ -24,7 +24,12 @@ import { router } from 'expo-router';
 import { useShareIntentContext } from 'expo-share-intent';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_KEY, API_HOST, API_ENDPOINT } from '../../constants/config';
-import { extractInstagramUrl, fetchPostInfo, type PostInfo } from '../../utils/instagram';
+import {
+  extractInstagramUrl,
+  fetchPostInfo,
+  normalizeInstagramUrl,
+  type PostInfo,
+} from '../../utils/instagram';
 
 const { width } = Dimensions.get('window');
 const TILE_SIZE = Math.floor((width - 32 - 16) / 3);
@@ -95,9 +100,47 @@ async function appendHistory(entry: object) {
   } catch {}
 }
 
+// ── API result cache: the same post never costs a second RapidAPI credit ─────
+// Instagram CDN links expire after a while, so entries are only reused for a few hours.
+const MEDIA_CACHE_KEY = 'media_cache';
+const MEDIA_CACHE_TTL = 6 * 60 * 60 * 1000;
+const MEDIA_CACHE_MAX = 50;
+
+type MediaCache = Record<string, { items: MediaItem[]; at: number }>;
+let mediaCache: MediaCache | null = null;
+
+async function loadMediaCache(): Promise<MediaCache> {
+  if (mediaCache) return mediaCache;
+  try {
+    const raw = await AsyncStorage.getItem(MEDIA_CACHE_KEY);
+    mediaCache = raw ? JSON.parse(raw) : {};
+  } catch {
+    mediaCache = {};
+  }
+  return mediaCache!;
+}
+
+async function getMediaItems(link: string): Promise<MediaItem[]> {
+  const key = normalizeInstagramUrl(link);
+  const cache = await loadMediaCache();
+  const hit = cache[key];
+  if (hit && Date.now() - hit.at < MEDIA_CACHE_TTL) return hit.items;
+
+  const items = await fetchMediaItems(link);
+  if (items.length > 0) {
+    cache[key] = { items, at: Date.now() };
+    // Keep only the newest entries
+    const keys = Object.keys(cache).sort((a, b) => cache[b].at - cache[a].at);
+    keys.slice(MEDIA_CACHE_MAX).forEach((k) => delete cache[k]);
+    AsyncStorage.setItem(MEDIA_CACHE_KEY, JSON.stringify(cache)).catch(() => {});
+  }
+  return items;
+}
+
 // ── "Select media to download" bottom sheet ─────────────────────────────────
 function MediaPickerSheet({
   visible,
+  loading,
   items,
   selected,
   onToggle,
@@ -105,6 +148,7 @@ function MediaPickerSheet({
   onCancel,
 }: {
   visible: boolean;
+  loading: boolean;
   items: MediaItem[];
   selected: number[];
   onToggle: (index: number) => void;
@@ -128,6 +172,11 @@ function MediaPickerSheet({
         <Text style={styles.sheetTitle}>Select media to download</Text>
 
         <ScrollView style={styles.sheetGridScroll} contentContainerStyle={styles.sheetGrid}>
+          {loading && (
+            <View style={[styles.tile, styles.tilePlaceholder]}>
+              <ActivityIndicator color="#ADC6FF" />
+            </View>
+          )}
           {items.map((item, i) => {
             const isSelected = selected.includes(i);
             return (
@@ -157,13 +206,16 @@ function MediaPickerSheet({
           })}
         </ScrollView>
 
+        {/* Tappable while still loading: the download starts as soon as the media arrives */}
         <TouchableOpacity
-          style={[styles.sheetDownloadBtn, selected.length === 0 && styles.btnDisabled]}
+          style={[styles.sheetDownloadBtn, !loading && selected.length === 0 && styles.btnDisabled]}
           onPress={onDownload}
-          disabled={selected.length === 0}
+          disabled={!loading && selected.length === 0}
           activeOpacity={0.85}
         >
-          <Text style={styles.sheetDownloadTxt}>Download ({selected.length})</Text>
+          <Text style={styles.sheetDownloadTxt}>
+            {loading ? 'Download' : `Download (${selected.length})`}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.sheetCancelBtn} onPress={onCancel}>
           <Text style={styles.sheetCancelTxt}>Cancel</Text>
@@ -180,48 +232,71 @@ export default function DownloadScreen() {
   const [pickerItems, setPickerItems] = useState<MediaItem[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
 
   const postInfoRef = useRef<Promise<PostInfo> | null>(null);
   const lastAutoLinkRef = useRef<string | null>(null);
+  const requestIdRef = useRef(0); // bumped on Cancel so a late API reply is ignored
+  const pendingDownloadRef = useRef(false); // Download tapped before the media arrived
   const busyRef = useRef(false);
   busyRef.current =
     downloadState === 'fetching' || downloadState === 'downloading' || pickerVisible;
 
   // mode 'direct': Download button — save everything right away.
-  // mode 'pick':   clipboard / share — show the "Select media" sheet first.
+  // mode 'pick':   clipboard / share — open the "Select media" sheet at once, load inside it.
   const startFetch = async (link: string, mode: 'direct' | 'pick') => {
-    const trimmed = link.trim();
-    if (!trimmed) {
-      Alert.alert('No link', 'Please paste an Instagram link');
+    // Only real Instagram links reach the API, so typos never cost a credit
+    const igLink = extractInstagramUrl(link);
+    if (!igLink) {
+      Alert.alert('Invalid link', 'Please enter an Instagram link');
       return;
     }
+    const requestId = ++requestIdRef.current;
     busyRef.current = true;
-    setDownloadState('fetching');
     setProgress(0);
-    // Caption + username for History, fetched in parallel with the media
-    postInfoRef.current = fetchPostInfo(trimmed);
+    if (mode === 'pick') {
+      pendingDownloadRef.current = false;
+      setPickerItems([]);
+      setSelected([]);
+      setPickerLoading(true);
+      setPickerVisible(true);
+      setDownloadState('idle');
+    } else {
+      setDownloadState('fetching');
+    }
+    // Caption + username for History, fetched in parallel with the media (no API credit)
+    postInfoRef.current = fetchPostInfo(igLink);
+
+    const fail = (title: string, message: string) => {
+      setPickerVisible(false);
+      setPickerLoading(false);
+      setDownloadState('idle');
+      Alert.alert(title, message);
+    };
 
     let items: MediaItem[] = [];
     try {
-      items = await fetchMediaItems(trimmed);
+      items = await getMediaItems(igLink);
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Could not fetch media. Check the link and try again.');
-      setDownloadState('idle');
+      if (requestId !== requestIdRef.current) return;
+      fail('Error', e?.message || 'Could not fetch media. Check the link and try again.');
       return;
     }
+    if (requestId !== requestIdRef.current) return; // cancelled meanwhile
     if (items.length === 0) {
-      Alert.alert('Not found', 'Could not fetch media. Check the link and try again.');
-      setDownloadState('idle');
+      fail('Not found', 'Could not fetch media. Check the link and try again.');
       return;
     }
 
-    if (mode === 'direct') {
-      await downloadItems(items, trimmed);
+    if (mode === 'direct' || pendingDownloadRef.current) {
+      pendingDownloadRef.current = false;
+      setPickerVisible(false);
+      setPickerLoading(false);
+      await downloadItems(items, igLink);
     } else {
       setPickerItems(items);
       setSelected(items.map((_, i) => i));
-      setPickerVisible(true);
-      setDownloadState('idle');
+      setPickerLoading(false);
     }
   };
 
@@ -303,8 +378,8 @@ export default function DownloadScreen() {
   // Link arrived without the user tapping anything (clipboard or Share menu)
   const autoStart = (link: string) => {
     if (busyRef.current) return;
-    lastAutoLinkRef.current = link;
-    AsyncStorage.setItem(LAST_AUTO_LINK_KEY, link).catch(() => {});
+    lastAutoLinkRef.current = normalizeInstagramUrl(link);
+    AsyncStorage.setItem(LAST_AUTO_LINK_KEY, lastAutoLinkRef.current).catch(() => {});
     router.navigate('/');
     setUrl(link);
     startFetch(link, 'pick');
@@ -319,7 +394,7 @@ export default function DownloadScreen() {
       try {
         if (!(await Clipboard.hasStringAsync())) return;
         const link = extractInstagramUrl(await Clipboard.getStringAsync());
-        if (!link || link === lastAutoLinkRef.current) return;
+        if (!link || normalizeInstagramUrl(link) === lastAutoLinkRef.current) return;
         autoStartRef.current(link);
       } catch {}
     };
@@ -364,8 +439,8 @@ export default function DownloadScreen() {
     const link = extractInstagramUrl(text);
     if (link) {
       // Already handled by hand, so don't auto-open the picker for it next time
-      lastAutoLinkRef.current = link;
-      AsyncStorage.setItem(LAST_AUTO_LINK_KEY, link).catch(() => {});
+      lastAutoLinkRef.current = normalizeInstagramUrl(link);
+      AsyncStorage.setItem(LAST_AUTO_LINK_KEY, lastAutoLinkRef.current).catch(() => {});
     }
     setUrl(link || text);
   };
@@ -374,14 +449,25 @@ export default function DownloadScreen() {
     setSelected((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
 
   const downloadPicked = () => {
+    if (pickerLoading) {
+      // Media still loading: close the sheet, keep one "Fetching → Saving" wait on the main screen
+      pendingDownloadRef.current = true;
+      setPickerVisible(false);
+      setDownloadState('fetching');
+      return;
+    }
     const items = pickerItems.filter((_, i) => selected.includes(i));
     setPickerVisible(false);
     downloadItems(items, url.trim());
   };
 
   const cancelPicker = () => {
+    requestIdRef.current++;
+    pendingDownloadRef.current = false;
     setPickerVisible(false);
+    setPickerLoading(false);
     setPickerItems([]);
+    setDownloadState('idle');
   };
 
   const reset = () => {
@@ -505,6 +591,7 @@ export default function DownloadScreen() {
 
       <MediaPickerSheet
         visible={pickerVisible}
+        loading={pickerLoading}
         items={pickerItems}
         selected={selected}
         onToggle={togglePick}

@@ -7,6 +7,18 @@ export function extractInstagramUrl(text: string | null | undefined): string | n
   return match ? match[0] : null;
 }
 
+/**
+ * Same post => same key, whatever tracking params (?igsh=...) or www. the link carries.
+ * e.g. "instagram.com/reel/ABC123"
+ */
+export function normalizeInstagramUrl(link: string): string {
+  return link
+    .trim()
+    .replace(/^https?:\/\/(www\.)?/i, '')
+    .split(/[?#]/)[0]
+    .replace(/\/+$/, ''); // no lowercasing: post codes are case-sensitive
+}
+
 function decodeEntities(s: string): string {
   return s
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
