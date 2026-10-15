@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  ToastAndroid,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type { WebViewNavigation } from 'react-native-webview';
@@ -14,7 +15,8 @@ import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_KEY, API_HOST, API_ENDPOINT, ALBUM_NAME, BROWSER_DEFAULT_URL } from '../../constants/config';
+import { API_KEY, API_HOST, API_ENDPOINT, BROWSER_DEFAULT_URL } from '../../constants/config';
+import { fetchPostInfo } from '../../utils/instagram';
 
 const ANDROID_UA =
   'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36';
@@ -141,19 +143,22 @@ export default function BrowserScreen() {
     setDownloading(true);
     setDlProgress({ current: 0, total: 0 });
     try {
+      // Write-only access: no photo picker on Android 13+, one-time prompt on older Android
       let permissionDenied = false;
       try {
-        const { status } = await MediaLibrary.requestPermissionsAsync();
+        const { status } = await MediaLibrary.requestPermissionsAsync(true);
         permissionDenied = status !== 'granted';
       } catch {
         // Expo Go: permission not declared in manifest — proceed anyway
       }
 
       if (permissionDenied) {
-        Alert.alert('Permission required', 'Allow gallery access to save media');
+        Alert.alert('Permission required', 'Allow storage access to save media');
         return;
       }
 
+      // Caption + username for History, fetched in parallel with the media
+      const postInfo = fetchPostInfo(currentUrl);
       const urls = await fetchAllMediaUrls(currentUrl);
 
       if (urls.length === 0) {
@@ -170,7 +175,6 @@ export default function BrowserScreen() {
       let imageCount = 0;
       let firstLocalUri = '';
       let firstMediaUrl = urls[0];
-      const downloadedAssets: MediaLibrary.Asset[] = [];
 
       for (let i = 0; i < urls.length; i++) {
         const mediaUrl = urls[i];
@@ -181,10 +185,8 @@ export default function BrowserScreen() {
         try {
           const result = await FileSystem.downloadAsync(mediaUrl, fileUri);
           if (result.status === 200) {
-            try {
-              const asset = await MediaLibrary.createAssetAsync(result.uri);
-              downloadedAssets.push(asset);
-            } catch {}
+            // Saved into the default gallery folder; no album move, so no "modify this" dialog
+            await MediaLibrary.createAssetAsync(result.uri);
             if (!firstLocalUri) {
               firstLocalUri = result.uri;
               firstMediaUrl = mediaUrl;
@@ -199,27 +201,10 @@ export default function BrowserScreen() {
         setDlProgress({ current: i + 1, total: urls.length });
       }
 
-      // Add all assets to album in one batch — avoids per-file permission dialogs on Android
-      if (downloadedAssets.length > 0) {
-        try {
-          const album = await MediaLibrary.getAlbumAsync(ALBUM_NAME);
-          if (album === null) {
-            await MediaLibrary.createAlbumAsync(ALBUM_NAME, downloadedAssets[0], false);
-            if (downloadedAssets.length > 1) {
-              const newAlbum = await MediaLibrary.getAlbumAsync(ALBUM_NAME);
-              if (newAlbum) {
-                await MediaLibrary.addAssetsToAlbumAsync(downloadedAssets.slice(1), newAlbum, false);
-              }
-            }
-          } else {
-            await MediaLibrary.addAssetsToAlbumAsync(downloadedAssets, album, false);
-          }
-        } catch {}
-      }
-
       const totalSaved = videoCount + imageCount;
 
       if (totalSaved > 0) {
+        const info = await postInfo;
         const raw = await AsyncStorage.getItem('download_history');
         const list = raw ? JSON.parse(raw) : [];
         list.unshift({
@@ -230,19 +215,14 @@ export default function BrowserScreen() {
           mediaType: videoCount > 0 ? 'video' : 'image',
           fileCount: totalSaved,
           timestamp: new Date().toISOString(),
-          caption: '',
+          caption: info.caption,
+          author: info.author,
         });
         await AsyncStorage.setItem('download_history', JSON.stringify(list.slice(0, 100)));
 
-        if (videoCount > 0 && imageCount === 0) {
-          Alert.alert('Video Saved!', `Video saved to gallery in '${ALBUM_NAME}' album`);
-        } else if (imageCount === 1 && videoCount === 0) {
-          Alert.alert('Image Saved!', `Image saved to gallery in '${ALBUM_NAME}' album`);
-        } else if (imageCount > 1 && videoCount === 0) {
-          Alert.alert('Post Saved!', `${imageCount} images saved to gallery in '${ALBUM_NAME}' album`);
-        } else {
-          Alert.alert('Saved!', `${totalSaved} files saved to gallery in '${ALBUM_NAME}' album`);
-        }
+        const msg = totalSaved > 1 ? `${totalSaved} files saved to gallery` : 'Saved to gallery';
+        if (Platform.OS === 'android') ToastAndroid.show(msg, ToastAndroid.SHORT);
+        else Alert.alert(msg);
       } else {
         Alert.alert('Download failed', 'Could not download media. Please try again.');
       }
@@ -268,7 +248,7 @@ export default function BrowserScreen() {
           disabled={!canGoBack}
           hitSlop={8}
         >
-          <Feather name="arrow-left" size={18} color={canGoBack ? '#FFFFFF' : '#3D3D5C'} />
+          <Feather name="arrow-left" size={18} color={canGoBack ? '#E2E2E9' : '#44474E'} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -277,11 +257,11 @@ export default function BrowserScreen() {
           disabled={!canGoForward}
           hitSlop={8}
         >
-          <Feather name="arrow-right" size={18} color={canGoForward ? '#FFFFFF' : '#3D3D5C'} />
+          <Feather name="arrow-right" size={18} color={canGoForward ? '#E2E2E9' : '#44474E'} />
         </TouchableOpacity>
 
         <View style={styles.urlPill}>
-          <Feather name="lock" size={11} color="#6C63FF" style={{ marginRight: 5 }} />
+          <Feather name="lock" size={11} color="#ADC6FF" style={{ marginRight: 5 }} />
           <Text style={styles.urlText} numberOfLines={1}>
             {truncateUrl(currentUrl)}
           </Text>
@@ -292,7 +272,7 @@ export default function BrowserScreen() {
           onPress={() => webRef.current?.reload()}
           hitSlop={8}
         >
-          <Feather name="refresh-cw" size={18} color="#FFFFFF" />
+          <Feather name="refresh-cw" size={18} color="#E2E2E9" />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -300,7 +280,7 @@ export default function BrowserScreen() {
           onPress={() => webRef.current?.injectJavaScript(`window.location.href = '${BROWSER_DEFAULT_URL}'; true;`)}
           hitSlop={8}
         >
-          <Feather name="home" size={18} color="#FFFFFF" />
+          <Feather name="home" size={18} color="#E2E2E9" />
         </TouchableOpacity>
       </View>
 
@@ -348,7 +328,7 @@ export default function BrowserScreen() {
         startInLoadingState
         renderLoading={() => (
           <View style={styles.webviewLoading}>
-            <ActivityIndicator size="large" color="#6C63FF" />
+            <ActivityIndicator size="large" color="#ADC6FF" />
           </View>
         )}
       />
@@ -362,9 +342,9 @@ export default function BrowserScreen() {
           activeOpacity={0.85}
         >
           {downloading ? (
-            <ActivityIndicator color="#fff" size="small" />
+            <ActivityIndicator color="#002E69" size="small" />
           ) : (
-            <Feather name="download" size={24} color="#FFFFFF" />
+            <Feather name="download" size={24} color="#002E69" />
           )}
         </TouchableOpacity>
       )}
@@ -380,12 +360,12 @@ export default function BrowserScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0D0D0D' },
+  container: { flex: 1, backgroundColor: '#111318' },
 
   controlBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#1D2024',
     paddingHorizontal: 8,
     paddingVertical: 8,
     gap: 4,
@@ -402,43 +382,43 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#111318',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderWidth: 1,
-    borderColor: '#2D2B55',
+    borderColor: '#33353A',
   },
-  urlText: { color: '#888888', fontSize: 12, flex: 1 },
+  urlText: { color: '#C4C6D0', fontSize: 12, flex: 1 },
 
   progressBar: {
     height: 3,
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#1D2024',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#6C63FF',
+    backgroundColor: '#ADC6FF',
   },
 
   dlProgressWrap: {
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#1D2024',
     paddingHorizontal: 16,
     paddingVertical: 8,
     gap: 6,
   },
   dlProgressTrack: {
     height: 5,
-    backgroundColor: '#2D2B55',
+    backgroundColor: '#33353A',
     borderRadius: 3,
     overflow: 'hidden',
   },
   dlProgressFill: {
     height: '100%',
-    backgroundColor: '#6C63FF',
+    backgroundColor: '#ADC6FF',
     borderRadius: 3,
   },
   dlProgressLabel: {
-    color: '#A29BFE',
+    color: '#ADC6FF',
     fontSize: 11,
     fontWeight: '600',
     textAlign: 'right',
@@ -447,7 +427,7 @@ const styles = StyleSheet.create({
   webview: { flex: 1 },
   webviewLoading: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#111318',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -459,11 +439,11 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: '#6C63FF',
+    backgroundColor: '#ADC6FF',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 10,
-    shadowColor: '#6C63FF',
+    shadowColor: '#ADC6FF',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.5,
     shadowRadius: 10,
@@ -472,12 +452,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 32,
     left: 88,
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#1D2024',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#2D2B55',
+    borderColor: '#33353A',
   },
-  fabHintText: { color: '#A29BFE', fontSize: 12, fontWeight: '600' },
+  fabHintText: { color: '#ADC6FF', fontSize: 12, fontWeight: '600' },
 });

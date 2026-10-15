@@ -23,6 +23,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Stack } from 'expo-router';
+import { ShareIntentProvider } from 'expo-share-intent';
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { Feather } from '@expo/vector-icons';
 
@@ -63,7 +64,7 @@ function HowToUseModal({ visible, onClose }: { visible: boolean; onClose: () => 
               <View style={modalStyles.header}>
                 <Text style={modalStyles.title}>How to Use</Text>
                 <TouchableOpacity onPress={onClose} hitSlop={8}>
-                  <Feather name="x" size={20} color="#888" />
+                  <Feather name="x" size={20} color="#C4C6D0" />
                 </TouchableOpacity>
               </View>
               {steps.map((step, i) => (
@@ -71,7 +72,7 @@ function HowToUseModal({ visible, onClose }: { visible: boolean; onClose: () => 
                   <View style={modalStyles.stepNum}>
                     <Text style={modalStyles.stepNumTxt}>{i + 1}</Text>
                   </View>
-                  <Feather name={step.icon} size={16} color="#6C63FF" style={modalStyles.stepIcon} />
+                  <Feather name={step.icon} size={16} color="#ADC6FF" style={modalStyles.stepIcon} />
                   <Text style={modalStyles.stepText}>{step.text}</Text>
                 </View>
               ))}
@@ -100,7 +101,7 @@ function PrivacyModal({ visible, onClose }: { visible: boolean; onClose: () => v
               <View style={modalStyles.header}>
                 <Text style={modalStyles.title}>Privacy Policy</Text>
                 <TouchableOpacity onPress={onClose} hitSlop={8}>
-                  <Feather name="x" size={20} color="#888" />
+                  <Feather name="x" size={20} color="#C4C6D0" />
                 </TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 340 }}>
@@ -211,10 +212,10 @@ function DrawerContent({
           activeOpacity={0.7}
         >
           <View style={styles.drawerIconBox}>
-            <Feather name={item.icon} size={18} color="#6C63FF" />
+            <Feather name={item.icon} size={18} color="#ADC6FF" />
           </View>
           <Text style={styles.drawerItemLabel}>{item.label}</Text>
-          <Feather name="chevron-right" size={14} color="#3D3D5C" />
+          <Feather name="chevron-right" size={14} color="#44474E" />
         </TouchableOpacity>
       ))}
 
@@ -230,7 +231,7 @@ function DrawerContent({
 }
 
 // ── Root Layout ─────────────────────────────────────────────────────────────
-export default function RootLayout() {
+function AppLayout() {
   const [splashDone, setSplashDone] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [howToUseVisible, setHowToUseVisible] = useState(false);
@@ -281,7 +282,7 @@ export default function RootLayout() {
   return (
     <DrawerContext.Provider value={{ openDrawer }}>
       <View style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor="#0D0D0D" />
+        <StatusBar barStyle="light-content" backgroundColor="#111318" />
 
         {/* Main navigation stack */}
         <Stack screenOptions={{ headerShown: false }} />
@@ -325,7 +326,7 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#111318',
   },
 
   overlay: {
@@ -340,7 +341,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     width: DRAWER_WIDTH,
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#1D2024',
     zIndex: 11,
     elevation: 16,
     shadowColor: '#000',
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
   },
   drawerInner: {
     flex: 1,
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#1D2024',
   },
 
   drawerHeader: {
@@ -366,14 +367,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   drawerAppName: {
-    color: '#FFFFFF',
+    color: '#E2E2E9',
     fontSize: 16,
     fontWeight: 'bold',
     lineHeight: 22,
   },
   drawerDivider: {
     height: 1,
-    backgroundColor: '#2D2B55',
+    backgroundColor: '#33353A',
     marginHorizontal: 20,
     marginBottom: 12,
   },
@@ -389,13 +390,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#2D2B55',
+    backgroundColor: '#33353A',
     alignItems: 'center',
     justifyContent: 'center',
   },
   drawerItemLabel: {
     flex: 1,
-    color: '#FFFFFF',
+    color: '#E2E2E9',
     fontSize: 15,
   },
 
@@ -406,11 +407,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   drawerVersion: {
-    color: '#3D3D5C',
+    color: '#44474E',
     fontSize: 12,
   },
   drawerDisclaimer: {
-    color: '#3D3D5C',
+    color: '#44474E',
     fontSize: 10,
     textAlign: 'center',
     paddingHorizontal: 20,
@@ -427,11 +428,11 @@ const modalStyles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#1D2024',
     borderRadius: 20,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#2D2B55',
+    borderColor: '#33353A',
   },
   header: {
     flexDirection: 'row',
@@ -440,7 +441,7 @@ const modalStyles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    color: '#FFFFFF',
+    color: '#E2E2E9',
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -454,24 +455,24 @@ const modalStyles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#2D2B55',
+    backgroundColor: '#33353A',
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepNumTxt: {
-    color: '#6C63FF',
+    color: '#ADC6FF',
     fontSize: 12,
     fontWeight: 'bold',
   },
   stepIcon: { width: 22 },
   stepText: {
-    color: '#AAAAAA',
+    color: '#C4C6D0',
     fontSize: 14,
     flex: 1,
     lineHeight: 20,
   },
   note: {
-    color: '#555555',
+    color: '#8E9099',
     fontSize: 12,
     textAlign: 'center',
     marginTop: 4,
@@ -479,21 +480,31 @@ const modalStyles = StyleSheet.create({
     lineHeight: 18,
   },
   closeBtn: {
-    backgroundColor: '#6C63FF',
+    backgroundColor: '#ADC6FF',
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
   },
   closeBtnTxt: {
-    color: '#FFFFFF',
+    color: '#E2E2E9',
     fontSize: 15,
     fontWeight: 'bold',
   },
   privacyText: {
-    color: '#AAAAAA',
+    color: '#C4C6D0',
     fontSize: 13,
     lineHeight: 21,
     marginBottom: 12,
   },
 });
+
+// ShareIntentProvider must wrap everything so a link shared from Instagram
+// is captured even while the splash screen is still showing.
+export default function RootLayout() {
+  return (
+    <ShareIntentProvider>
+      <AppLayout />
+    </ShareIntentProvider>
+  );
+}

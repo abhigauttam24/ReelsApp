@@ -9,7 +9,7 @@ import { DrawerContext } from '../_layout';
 type FeatherIconName = ComponentProps<typeof Feather>['name'];
 
 const TAB_CONFIG: Record<string, { icon: FeatherIconName; label: string }> = {
-  index:   { icon: 'home',   label: 'Home'    },
+  index:   { icon: 'home',   label: 'Download' },
   browser: { icon: 'search', label: 'Browser' },
   history: { icon: 'check',  label: 'History' },
 };
@@ -31,22 +31,22 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
             activeOpacity={0.8}
             onPress={() => navigation.navigate(route.name)}
           >
-            {/* Purple pill wraps icon + label in COLUMN layout when active */}
-            <View style={[styles.tabContent, isFocused && styles.activePill]}>
+            {/* Material 3 style: pill behind the icon only, label below */}
+            <View style={[styles.iconPill, isFocused && styles.activePill]}>
               <Feather
                 name={cfg.icon}
-                size={isFocused ? 18 : 20}
-                color="#FFFFFF"
+                size={22}
+                color={isFocused ? '#DAE2F9' : '#C4C6D0'}
               />
-              <Text
-                style={[
-                  styles.tabLabel,
-                  isFocused ? styles.activePillLabel : styles.inactiveLabel,
-                ]}
-              >
-                {cfg.label}
-              </Text>
             </View>
+            <Text
+              style={[
+                styles.tabLabel,
+                isFocused ? styles.activePillLabel : styles.inactiveLabel,
+              ]}
+            >
+              {cfg.label}
+            </Text>
           </TouchableOpacity>
         );
       })}
@@ -61,7 +61,7 @@ function HamburgerButton({ title }: { title: string }) {
   return (
     <View style={styles.headerLeft}>
       <TouchableOpacity onPress={openDrawer} style={styles.hamburgerBtn} hitSlop={8}>
-        <Feather name="menu" size={24} color="#FFFFFF" />
+        <Feather name="menu" size={24} color="#E2E2E9" />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>{title}</Text>
     </View>
@@ -73,10 +73,10 @@ function HeaderRight() {
   return (
     <View style={styles.headerRight}>
       <TouchableOpacity style={styles.headerIconBtn} hitSlop={8}>
-        <Feather name="tv" size={20} color="#FFFFFF" />
+        <Feather name="tv" size={20} color="#E2E2E9" />
       </TouchableOpacity>
       <TouchableOpacity style={styles.headerIconBtn} hitSlop={8}>
-        <Feather name="camera" size={20} color="#FFFFFF" />
+        <Feather name="camera" size={20} color="#E2E2E9" />
       </TouchableOpacity>
     </View>
   );
@@ -89,19 +89,19 @@ export default function TabLayout() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#0D0D0D',
+          backgroundColor: '#111318',
           elevation: 0,
           shadowOpacity: 0,
           borderBottomWidth: 0,
         },
-        headerTintColor: '#FFFFFF',
+        headerTintColor: '#E2E2E9',
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           headerTitle: '',
-          headerLeft: () => <HamburgerButton title="Home" />,
+          headerLeft: () => <HamburgerButton title="Download" />,
           headerRight: () => <HeaderRight />,
         }}
       />
@@ -130,8 +130,8 @@ const styles = StyleSheet.create({
   // Tab bar container
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#1A1A2E',
-    paddingTop: 10,
+    backgroundColor: '#1D2024',
+    paddingTop: 12,
     paddingHorizontal: 8,
     borderTopWidth: 0,
     elevation: 0,
@@ -143,38 +143,34 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    gap: 4,
   },
 
-  // Inner wrapper — column layout (icon above label)
-  tabContent: {
-    flexDirection: 'column',
+  // Pill behind the icon (64x32, Material 3 navigation bar indicator)
+  iconPill: {
+    width: 64,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
   },
 
-  // Active state: purple pill
+  // Active state
   activePill: {
-    backgroundColor: '#6C63FF',
+    backgroundColor: '#3E4759',
   },
 
-  // Label inside active pill
   activePillLabel: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
+    color: '#E2E2E9',
+    fontWeight: '600',
   },
 
-  // Inactive label
   tabLabel: {
-    fontSize: 10,
+    fontSize: 12,
+    letterSpacing: 0.4,
   },
   inactiveLabel: {
-    color: '#888888',
+    color: '#C4C6D0',
     fontWeight: '500',
   },
 
@@ -188,10 +184,10 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 4,
+    color: '#E2E2E9',
+    fontSize: 22,
+    fontWeight: '400',
+    marginLeft: 12,
   },
   headerRight: {
     flexDirection: 'row',

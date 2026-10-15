@@ -35,12 +35,12 @@ function Bullet({ text }: { text: string }) {
 export default function PrivacyPolicyScreen() {
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D0D0D" />
+      <StatusBar barStyle="light-content" backgroundColor="#111318" />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Feather name="arrow-left" size={22} color="#FFFFFF" />
+          <Feather name="arrow-left" size={22} color="#E2E2E9" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Privacy Policy</Text>
         <View style={{ width: 38 }} />
@@ -113,17 +113,17 @@ export default function PrivacyPolicyScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0D0D0D' },
+  container: { flex: 1, backgroundColor: '#111318' },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0D0D0D',
+    backgroundColor: '#111318',
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1A1A2E',
+    borderBottomColor: '#1D2024',
   },
   backBtn: {
     width: 38,
@@ -131,10 +131,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
-    backgroundColor: '#1A1A2E',
+    backgroundColor: '#1D2024',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: '#E2E2E9',
     fontSize: 17,
     fontWeight: 'bold',
   },
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
 
   lastUpdated: {
-    color: '#555',
+    color: '#8E9099',
     fontSize: 12,
     marginBottom: 14,
     fontStyle: 'italic',
@@ -157,14 +157,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sectionTitle: {
-    color: '#6C63FF',
+    color: '#ADC6FF',
     fontSize: 15,
     fontWeight: 'bold',
     marginBottom: 10,
   },
 
   para: {
-    color: '#AAAAAA',
+    color: '#C4C6D0',
     fontSize: 14,
     lineHeight: 22,
     marginBottom: 8,
@@ -180,27 +180,27 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: '#6C63FF',
+    backgroundColor: '#ADC6FF',
     marginTop: 8,
     marginRight: 10,
     flexShrink: 0,
   },
   bulletText: {
     flex: 1,
-    color: '#AAAAAA',
+    color: '#C4C6D0',
     fontSize: 14,
     lineHeight: 22,
   },
 
   email: {
-    color: '#A29BFE',
+    color: '#ADC6FF',
     fontSize: 14,
     marginTop: 4,
     marginBottom: 8,
   },
 
   footer: {
-    color: '#3D3D5C',
+    color: '#44474E',
     fontSize: 12,
     textAlign: 'center',
     marginTop: 32,

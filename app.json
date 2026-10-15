@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0D0D0D"
+      "backgroundColor": "#111318"
     },
     "ios": {
       "supportsTablet": true
@@ -19,7 +19,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive_icon.png",
-        "backgroundColor": "#0D0D0D"
+        "backgroundColor": "#111318"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.abhigauttam18.socialvideodownloader",
@@ -45,7 +45,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0D0D0D",
+          "backgroundColor": "#111318",
           "android": {
             "image": "./assets/logo.png",
             "imageWidth": 150
@@ -60,7 +60,14 @@
           "isAccessMediaLocationEnabled": false
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-share-intent",
+        {
+          "androidIntentFilters": ["text/*"],
+          "disableIOS": true
+        }
+      ]
     ],
     "extra": {
       "router": {},
