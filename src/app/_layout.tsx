@@ -38,8 +38,9 @@ const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
 type FeatherName = ComponentProps<typeof Feather>['name'];
 
 // ── Drawer Context ──────────────────────────────────────────────────────────
-export const DrawerContext = createContext<{ openDrawer: () => void }>({
+export const DrawerContext = createContext<{ openDrawer: () => void; showHowToUse: () => void }>({
   openDrawer: () => {},
+  showHowToUse: () => {},
 });
 
 export function useAppDrawer() {
@@ -280,7 +281,7 @@ function AppLayout() {
   }
 
   return (
-    <DrawerContext.Provider value={{ openDrawer }}>
+    <DrawerContext.Provider value={{ openDrawer, showHowToUse: () => setHowToUseVisible(true) }}>
       <View style={styles.root}>
         <StatusBar barStyle="light-content" backgroundColor="#111318" />
 

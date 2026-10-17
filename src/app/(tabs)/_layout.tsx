@@ -1,6 +1,6 @@
 import React, { useContext, type ComponentProps } from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Linking } from 'react-native';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -70,13 +70,18 @@ function HamburgerButton({ title }: { title: string }) {
 
 // ── Header right icons ────────────────────────────────────────────────────────
 function HeaderRight() {
+  const { showHowToUse } = useContext(DrawerContext);
+
+  // https link opens the Instagram app when installed (Android app link), otherwise the browser
+  const openInstagram = () => Linking.openURL('https://www.instagram.com/').catch(() => {});
+
   return (
     <View style={styles.headerRight}>
-      <TouchableOpacity style={styles.headerIconBtn} hitSlop={8}>
-        <Feather name="tv" size={20} color="#E2E2E9" />
+      <TouchableOpacity style={styles.headerIconBtn} onPress={showHowToUse} hitSlop={8}>
+        <Feather name="help-circle" size={22} color="#E2E2E9" />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.headerIconBtn} hitSlop={8}>
-        <Feather name="camera" size={20} color="#E2E2E9" />
+      <TouchableOpacity style={styles.headerIconBtn} onPress={openInstagram} hitSlop={8}>
+        <Feather name="instagram" size={22} color="#E2E2E9" />
       </TouchableOpacity>
     </View>
   );
